@@ -45,6 +45,14 @@ struct AP_Info AP2 = {
 MODULE_DESCRIPTION("Monitor Packet");
 MODULE_LICENSE("GPL");
 
+void print_info(struct iphdr *ip_header, struct sk_buff *sock_buff ){
+	printk(KERN_INFO "src_ip: %pI4 \n", &ip_header->saddr);
+	printk(KERN_INFO "dst_ip: %pI4\n", &ip_header->daddr);
+	printk(KERN_INFO"TCP ports: source: %d, dest: %d .\n",sport,dport);
+	printk(KERN_INFO "ttl: %u \n", ip_header->ttl);
+	printk(KERN_INFO "Time tamp: %lld ns\n",sock_buff->tstamp);
+	return;
+}
 unsigned int hook_func(void *priv, struct sk_buff *skb, const struct nf_hook_state *state)
 {
         sock_buff = skb;
@@ -59,11 +67,8 @@ unsigned int hook_func(void *priv, struct sk_buff *skb, const struct nf_hook_sta
 			__net_timestamp(sock_buff);
 			if(AP1.first_in && AP1.index == -1 && prev == 0){
 				printk(KERN_INFO "First packet input \n");
-				printk(KERN_INFO "src_ip: %pI4 \n", &ip_header->saddr);
-				printk(KERN_INFO "dst_ip: %pI4\n", &ip_header->daddr);
-				printk(KERN_INFO"TCP ports: source: %d, dest: %d .\n",sport,dport);
-				printk(KERN_INFO "ttl: %u \n", ip_header->ttl);
-				printk(KERN_INFO "Time tamp: %lld ns\n",sock_buff->tstamp);
+				print_info(ip_header,sock_buff);
+				printk(KERN_INFO "---------------------------------------\n");
 				prev = sock_buff->tstamp;
 				AP1.index++;
 				AP1.first_in = false;
@@ -71,23 +76,15 @@ unsigned int hook_func(void *priv, struct sk_buff *skb, const struct nf_hook_sta
 			}
 			else if(AP1.index >= SIZE && !AP1.first_in){
 				printk(KERN_INFO "First packet input \n");
-				printk(KERN_INFO "src_ip: %pI4 \n", &ip_header->saddr);
-				printk(KERN_INFO "dst_ip: %pI4\n", &ip_header->daddr);
-				printk(KERN_INFO"TCP ports: source: %d, dest: %d .\n",sport,dport);
-				printk(KERN_INFO "ttl: %u \n", ip_header->ttl);
-				printk(KERN_INFO "Time tamp: %lld ns\n",sock_buff->tstamp);
+				print_info(ip_header,sock_buff);
+				printk(KERN_INFO "---------------------------------------\n");
 				prev = sock_buff->tstamp;;
 				AP1.index = 0;
 				AP1.b_delay = false;
 				return NF_ACCEPT;
 			}
 			
-			printk(KERN_INFO "src_ip: %pI4 \n", &ip_header->saddr);
-			printk(KERN_INFO "dst_ip: %pI4\n", &ip_header->daddr);
-			printk(KERN_INFO"TCP ports: source: %d, dest: %d .\n",sport,dport);
-			printk(KERN_INFO "ttl: %u \n", ip_header->ttl);
-			printk(KERN_INFO "Time tamp: %lld ns\n",sock_buff->tstamp);
-			
+			print_info(ip_header,sock_buff);
 			diff = sock_buff->tstamp - prev;
 			printk(KERN_INFO "Differ Time tamp: %lld ns\n",diff);
 			if(!AP1.b_delay && diff <= AP1.delay_table[AP1.index]){
@@ -108,11 +105,9 @@ unsigned int hook_func(void *priv, struct sk_buff *skb, const struct nf_hook_sta
 			printk(KERN_INFO "Index: %d \n", AP2.index);
 			if(AP2.first_in && AP2.index == -1 && prev == 0){
 				printk(KERN_INFO "First packet input \n");
-				printk(KERN_INFO "src_ip: %pI4 \n", &ip_header->saddr);
-				printk(KERN_INFO "dst_ip: %pI4\n", &ip_header->daddr);
-				printk(KERN_INFO"TCP ports: source: %d, dest: %d .\n",sport,dport);
-				printk(KERN_INFO "ttl: %u \n", ip_header->ttl);
-				printk(KERN_INFO "Time tamp: %lld ns\n",sock_buff->tstamp);
+		
+				print_info(ip_header,sock_buff);
+				printk(KERN_INFO "---------------------------------------\n");
 				prev = sock_buff->tstamp;
 				AP2.index++;
 				AP2.first_in = false;
@@ -120,23 +115,15 @@ unsigned int hook_func(void *priv, struct sk_buff *skb, const struct nf_hook_sta
 			}
 			else if(AP2.index >= SIZE && !AP2.first_in){
 				printk(KERN_INFO "First packet input \n");
-				printk(KERN_INFO "src_ip: %pI4 \n", &ip_header->saddr);
-				printk(KERN_INFO "dst_ip: %pI4\n", &ip_header->daddr);
-				printk(KERN_INFO"TCP ports: source: %d, dest: %d .\n",sport,dport);
-				printk(KERN_INFO "ttl: %u \n", ip_header->ttl);
-				printk(KERN_INFO "Time tamp: %lld ns\n",sock_buff->tstamp);
+				print_info(ip_header,sock_buff);
+				printk(KERN_INFO "---------------------------------------\n");
 				prev = sock_buff->tstamp;;
 				AP2.index = 0;
 				AP2.b_delay = false;
 				return NF_ACCEPT;
 			}
 			
-			printk(KERN_INFO "src_ip: %pI4 \n", &ip_header->saddr);
-			printk(KERN_INFO "dst_ip: %pI4\n", &ip_header->daddr);
-			printk(KERN_INFO"TCP ports: source: %d, dest: %d .\n",sport,dport);
-			printk(KERN_INFO "ttl: %u \n", ip_header->ttl);
-			printk(KERN_INFO "Time tamp: %lld ns\n",sock_buff->tstamp);
-			
+			print_info(ip_header,sock_buff);
 			diff = sock_buff->tstamp - prev;
 			printk(KERN_INFO "Differ Time tamp: %lld ns\n",diff);
 			if(!AP2.b_delay && diff <= AP2.delay_table[AP2.index]){
@@ -162,8 +149,6 @@ unsigned int hook_func(void *priv, struct sk_buff *skb, const struct nf_hook_sta
 int init_module()
 {
         nfho.hook = hook_func;
-        //nfho.hooknum = 4; //NF_INET_PRE_ROUTING=0(capture ICMP Request.)  NF_INET_POST_ROUTING=4(capture ICMP reply.)
-	//nfho.hooknum = NF_INET_POST_ROUTING;         /* received packets */
         nfho.hooknum = NF_INET_PRE_ROUTING  ;             /* Get Time Stamp */
         nfho.pf = PF_INET;//IPV4 packets
         nfho.priority = NF_IP_PRI_FIRST;//set to highest priority over all other hook functions
