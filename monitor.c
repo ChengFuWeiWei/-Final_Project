@@ -105,7 +105,6 @@ unsigned int hook_func(void *priv, struct sk_buff *skb, const struct nf_hook_sta
 			printk(KERN_INFO "Index: %d \n", AP2.index);
 			if(AP2.first_in && AP2.index == -1 && prev == 0){
 				printk(KERN_INFO "First packet input \n");
-		
 				print_info(ip_header,sock_buff);
 				printk(KERN_INFO "---------------------------------------\n");
 				prev = sock_buff->tstamp;
