@@ -102,7 +102,6 @@ unsigned int hook_func(void *priv, struct sk_buff *skb, const struct nf_hook_sta
 		}
 		else if(ip_header->saddr == in_aton(SIP_2) && ip_header->daddr == in_aton(DIP)){
 			__net_timestamp(sock_buff);
-			printk(KERN_INFO "Index: %d \n", AP2.index);
 			if(AP2.first_in && AP2.index == -1 && prev == 0){
 				printk(KERN_INFO "First packet input \n");
 				print_info(ip_header,sock_buff);
