@@ -9,10 +9,10 @@
 #include <linux/ip.h>
 #include <linux/inet.h>
 #include <linux/ktime.h>
-#define SIZE 3
-#define SIP_1 "192.168.42.143"
+#define SIZE 4
+#define SIP_1 "192.168.20.2"
 #define SIP_2 "192.168.42.111"
-#define DIP "192.168.42.138"
+#define DIP "8.8.8.8"
 
 static struct nf_hook_ops nfho;     // net filter hook option struct 
 struct sk_buff *sock_buff;          // socket buffer used in linux kernel
@@ -22,24 +22,24 @@ struct ethhdr *mac_header;          // mac header struct
 struct tcphdr *tcp_header;          // tcp header struct
 unsigned int sport,dport;
 ktime_t diff, prev = 0;
+int FT = 10; //represent percent of fault-tolerant
 struct AP_Info{
     int index;
-    unsigned int delay_table[SIZE];
-    bool first_in;
-    bool b_delay;
-
+    s64 delay_table[SIZE]; // pre-defined
+	s64 legal_delay_low[SIZE]; // init in init_module
+	s64 legal_delay_high[SIZE]; // init in init_module
 };
 struct AP_Info AP1 = {
     .index = -1,
-    .delay_table = {1600000000, 1600000000, 1600000000},
-    .first_in = true,
-    .b_delay = false
+    .delay_table = {300000000, 100000000, 200000000,100000000},
+	.legal_delay_low = {0,0,0,0},
+	.legal_delay_high = {0,0,0,0}
 };
 struct AP_Info AP2 = {
     .index = -1,
-    .delay_table = {1600000000, 1600000000, 1600000000},
-    .first_in = true,
-    .b_delay = false
+    .delay_table = {100000000, 100000000, 100000000, 100000000},
+	.legal_delay_low = {0,0,0,0},
+	.legal_delay_high = {0,0,0,0}
 };
 
 MODULE_DESCRIPTION("Monitor Packet");
@@ -55,102 +55,91 @@ void print_info(struct iphdr *ip_header, struct sk_buff *sock_buff ){
 }
 unsigned int hook_func(void *priv, struct sk_buff *skb, const struct nf_hook_state *state)
 {
-        sock_buff = skb;
-        ip_header = (struct iphdr *)skb_network_header(sock_buff); //grab network header using accessor
-        mac_header = (struct ethhdr *)skb_mac_header(sock_buff);
+    sock_buff = skb;
+    ip_header = (struct iphdr *)skb_network_header(sock_buff); //grab network header using accessor
+    mac_header = (struct ethhdr *)skb_mac_header(sock_buff);
 	tcp_header = (struct tcphdr *)skb_transport_header(sock_buff);
 	sport = ntohs((unsigned short int)tcp_header->source); //sport now has the source port
 	dport = ntohs((unsigned short int)tcp_header->dest);   //dport now has the dest port
-        if(!sock_buff) { return NF_DROP;}
+    if(!sock_buff) { return NF_DROP;}
 	if(state->hook == NF_INET_PRE_ROUTING){
 		if(ip_header->saddr == in_aton(SIP_1) && ip_header->daddr == in_aton(DIP)){
 			__net_timestamp(sock_buff);
-			if(AP1.first_in && AP1.index == -1 && prev == 0){
+			if(AP1.index == -1){
 				printk(KERN_INFO "First packet input \n");
 				print_info(ip_header,sock_buff);
 				printk(KERN_INFO "---------------------------------------\n");
 				prev = sock_buff->tstamp;
 				AP1.index++;
-				AP1.first_in = false;
-				return NF_ACCEPT;
-			}
-			else if(AP1.index >= SIZE && !AP1.first_in){
-				printk(KERN_INFO "First packet input \n");
-				print_info(ip_header,sock_buff);
-				printk(KERN_INFO "---------------------------------------\n");
-				prev = sock_buff->tstamp;;
-				AP1.index = 0;
-				AP1.b_delay = false;
 				return NF_ACCEPT;
 			}
 			
 			print_info(ip_header,sock_buff);
 			diff = sock_buff->tstamp - prev;
+			prev = sock_buff->tstamp;
 			printk(KERN_INFO "Differ Time tamp: %lld ns\n",diff);
-			if(!AP1.b_delay && diff <= AP1.delay_table[AP1.index]){
+			AP1.index = (AP1.index + 1)% SIZE;
+			if( AP1.legal_delay_low[AP1.index] <=diff && diff <= AP1.legal_delay_high[AP1.index] ){
 				printk(KERN_INFO"Legal Delay \n");
-				AP1.index++;
+				printk(KERN_INFO "---------------------------------------\n");
 			}
-			else if (diff > AP1.delay_table[AP1.index] || AP1.b_delay){
+			else{
 				printk(KERN_INFO"Illegal Delay and Drop it \n");
-				AP1.b_delay = true;
-				AP1.index++;
+				printk(KERN_INFO "---------------------------------------\n");
 				return NF_DROP;
 			}
-			prev = sock_buff->tstamp;
-			printk(KERN_INFO "---------------------------------------\n");	
 		}
 		else if(ip_header->saddr == in_aton(SIP_2) && ip_header->daddr == in_aton(DIP)){
 			__net_timestamp(sock_buff);
-			if(AP2.first_in && AP2.index == -1 && prev == 0){
+			if(AP2.index == -1){
 				printk(KERN_INFO "First packet input \n");
 				print_info(ip_header,sock_buff);
 				printk(KERN_INFO "---------------------------------------\n");
 				prev = sock_buff->tstamp;
 				AP2.index++;
-				AP2.first_in = false;
-				return NF_ACCEPT;
-			}
-			else if(AP2.index >= SIZE && !AP2.first_in){
-				printk(KERN_INFO "First packet input \n");
-				print_info(ip_header,sock_buff);
-				printk(KERN_INFO "---------------------------------------\n");
-				prev = sock_buff->tstamp;;
-				AP2.index = 0;
-				AP2.b_delay = false;
 				return NF_ACCEPT;
 			}
 			
 			print_info(ip_header,sock_buff);
 			diff = sock_buff->tstamp - prev;
+			prev = sock_buff->tstamp;
 			printk(KERN_INFO "Differ Time tamp: %lld ns\n",diff);
-			if(!AP2.b_delay && diff <= AP2.delay_table[AP2.index]){
+			AP2.index = (AP2.index + 1)% SIZE;
+			if( AP2.legal_delay_low[AP2.index] <=diff && diff <= AP2.legal_delay_high[AP2.index] ){
 				printk(KERN_INFO"Legal Delay \n");
-				AP2.index++;
+				printk(KERN_INFO "---------------------------------------\n");
 			}
-			else if (diff > AP2.delay_table[AP2.index] || AP2.b_delay){
+			else{
 				printk(KERN_INFO"Illegal Delay and Drop it \n");
-				AP2.b_delay = true;
-				AP2.index++;
+				printk(KERN_INFO "---------------------------------------\n");
 				return NF_DROP;
 			}
-			prev = sock_buff->tstamp;
-			printk(KERN_INFO "---------------------------------------\n");
 		}
 			
 	}	
-      	
-	
 	return NF_ACCEPT;
 }
  
 int init_module()
 {
-        nfho.hook = hook_func;
+        int i;
+
+		nfho.hook = hook_func;
         nfho.hooknum = NF_INET_PRE_ROUTING  ;             /* Get Time Stamp */
         nfho.pf = PF_INET;//IPV4 packets
         nfho.priority = NF_IP_PRI_FIRST;//set to highest priority over all other hook functions
         nf_register_net_hook(&init_net, &nfho);
+
+		for(i=0;i<SIZE;i++){
+			AP1.legal_delay_low[i] = AP1.delay_table[i]-AP1.delay_table[i]*FT/100;
+			AP1.legal_delay_high[i] = AP1.delay_table[i]+AP1.delay_table[i]*FT/100;
+			AP2.legal_delay_low[i] = AP2.delay_table[i]-AP2.delay_table[i]*FT/100;
+			AP2.legal_delay_high[i] = AP2.delay_table[i]+AP2.delay_table[i]*FT/100;
+		}
+		
+		for(i=0;i<SIZE;i++){
+			printk(KERN_INFO"%lld %lld \n",AP1.legal_delay_low[i],AP1.legal_delay_high[i]);
+		}
 
         printk(KERN_INFO "---------------------------------------\n");
         printk(KERN_INFO "Loading kernel module...\n");
