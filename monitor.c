@@ -63,7 +63,7 @@ unsigned int hook_func(void *priv, struct sk_buff *skb, const struct nf_hook_sta
 	dport = ntohs((unsigned short int)tcp_header->dest);   //dport now has the dest port
     if(!sock_buff) { return NF_DROP;}
 	if(state->hook == NF_INET_PRE_ROUTING){
-		if(ip_header->saddr == in_aton(SIP_1) && ip_header->daddr == in_aton(DIP)){
+		if(ip_header->saddr == in_aton(SIP_1)){
 			__net_timestamp(sock_buff);
 			if(AP1.index == -1){
 				printk(KERN_INFO "First packet input \n");
@@ -71,7 +71,7 @@ unsigned int hook_func(void *priv, struct sk_buff *skb, const struct nf_hook_sta
 				printk(KERN_INFO "---------------------------------------\n");
 				prev = sock_buff->tstamp;
 				AP1.index++;
-				return NF_ACCEPT;
+				return NF_DROP;
 			}
 			
 			print_info(ip_header,sock_buff);
@@ -89,7 +89,7 @@ unsigned int hook_func(void *priv, struct sk_buff *skb, const struct nf_hook_sta
 				return NF_DROP;
 			}
 		}
-		else if(ip_header->saddr == in_aton(SIP_2) && ip_header->daddr == in_aton(DIP)){
+		else if(ip_header->saddr == in_aton(SIP_2) ){
 			__net_timestamp(sock_buff);
 			if(AP2.index == -1){
 				printk(KERN_INFO "First packet input \n");
@@ -97,7 +97,7 @@ unsigned int hook_func(void *priv, struct sk_buff *skb, const struct nf_hook_sta
 				printk(KERN_INFO "---------------------------------------\n");
 				prev = sock_buff->tstamp;
 				AP2.index++;
-				return NF_ACCEPT;
+				return NF_DROP;
 			}
 			
 			print_info(ip_header,sock_buff);
